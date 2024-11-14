@@ -26,6 +26,13 @@ class TaskManager:
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.get_wheel_velocity(10)
 
+        #pins for line sensor
+        #self.SEN_0 = 
+        #self.SEN_2 = 
+        self.SEN_3 = Pin(Pin.cpu.B13, mode=Pin.OUT)
+        self.SEN_4 = Pin(Pin.cpu.B14, mode=Pin.OUT)
+
+
         # motors and encoders
         self.motorL = motorL
         self.motorR = motorR
@@ -56,12 +63,14 @@ class TaskManager:
         adjust_speed = cotask.Task(self.task_adjust_speed, priority=7, period=20, profile=True, trace=False)
         update_position = cotask.Task(self.task_update_position, priority=0, period=10, profile=True, trace=False)
         print_motor_data = cotask.Task(self.task_print_motor_data, priority=1, period=150, profile=True, trace=False)
+        read_line = cotask.Task(self.task_read_line, priority=6, period=1000, profile=True, trace=False)
 
         cotask.task_list.append(controller)
+        cotask.task_list.append(read_line)
         cotask.task_list.append(move)
         cotask.task_list.append(adjust_speed)
         cotask.task_list.append(update_position)
-        cotask.task_list.append(print_motor_data)
+        #cotask.task_list.append(print_motor_data)
 
     def run_tasks(self):
         while True:
@@ -136,6 +145,25 @@ class TaskManager:
             while self.print_motor_data_flag:
                 print(f"{self.encL.get_velocity()} {self.encR.get_velocity()} {self.posAbs}")
                 self.print_motor_data_flag = False
+            yield
+
+    def task_read_line(self):
+        while True:
+
+            time.sleep(0.1)
+            vals = [self.SEN_4.value(), self.SEN_3.value()]
+
+            if vals == [0,0]:
+                print("No line read")
+            elif vals == [0,1]:
+                print("Right side ")
+            elif vals == [1,0]:
+                print("Left side ")
+            elif vals == [1,1]:
+                print("both")
+            else:
+                print("nothing?")
+            
             yield
 
     # FUNC
