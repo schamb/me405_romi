@@ -2,10 +2,10 @@ import time
 import cotask
 import task_share
 from pyb import Pin, Timer
-from time import ticks_us, ticks_add, ticks_diff
+from time import ticks_us, ticks_add, ticks_diff, sleep
 import math
 from bno055 import *
-from pyb import I2C
+from pyb import I2C, ADC
 import machine
 
 """
@@ -27,10 +27,10 @@ class TaskManager:
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.get_wheel_velocity(10)
 
         #pins for line sensor
-        #self.SEN_0 = 
-        #self.SEN_2 = 
-        self.SEN_3 = Pin(Pin.cpu.B13, mode=Pin.OUT)
-        self.SEN_4 = Pin(Pin.cpu.B14, mode=Pin.OUT)
+        #self.SEN_0 =
+        #self.SEN_2 =
+        self.SEN_3 = Pin.cpu.B11
+        self.SEN_4 = Pin.cpu.B12
 
 
         # motors and encoders
@@ -72,6 +72,43 @@ class TaskManager:
         cotask.task_list.append(update_position)
         #cotask.task_list.append(print_motor_data)
 
+    def read(self, sensors):
+        sensorValues = [0,0,0,0]
+        maxValue = 4095
+
+        for i, sensor in enumerate(sensors):
+            sensorValues[i] = maxValue
+            # make sensor line an output (drives low briefly, but doesn't matter)
+            sensor.init(sensor.OUT)
+            # drive sensor line high
+            sensor.value(1)
+
+
+        time.sleep(.00001) # charge lines for 10 us
+
+        # record start time before the first sensor is switched to input
+        # (similarly, time is checked before the first sensor is read in the
+        # loop below)
+        startTime = time.ticks_us()
+        t = 0
+
+        for sensor in sensors:
+            # make sensor line an input (should also ensure pull-up is disabled)
+            sensor.init(sensor.IN)
+
+
+        while (t < maxValue):
+            t = ticks_diff(ticks_us(), startTime)
+            for i in range(0, len(sensors)):
+                if (sensors[i].value() == 0) and (t < sensorValues[i]):
+                    # record the first time the line reads low
+                    sensorValues[i] = t // 2048
+
+        return sensorValues
+
+
+
+
     def run_tasks(self):
         while True:
             try:
@@ -87,10 +124,10 @@ class TaskManager:
         destination = self.yaw
         while True:
             # if romi is not at his destination then he should move
-            if destination > (2*math.pi / 360 )*self.IMU.euler()[0] :
-                self.move_flag = True
-            else:
-                self.move_flag = False
+            # if destination > (2*math.pi / 360 )*self.IMU.euler()[0] :
+            #     self.move_flag = True
+            # else:
+            #     self.move_flag = False
 
             yield
 
@@ -150,20 +187,39 @@ class TaskManager:
     def task_read_line(self):
         while True:
 
-            time.sleep(0.1)
-            vals = [self.SEN_4.value(), self.SEN_3.value()]
+            #s3 = Pin(self.SEN_3, Pin.OUT)
+            # s4 = Pin(self.SEN_4, Pin.OUT)
 
-            if vals == [0,0]:
-                print("No line read")
-            elif vals == [0,1]:
-                print("Right side ")
-            elif vals == [1,0]:
-                print("Left side ")
-            elif vals == [1,1]:
-                print("both")
-            else:
-                print("nothing?")
-            
+            # s3.value(1)
+            # s4.value(1)
+
+            # time.sleep(.00001)
+
+            # s3.init(s3.IN)
+            # s4.init(s4.IN)
+
+            # #time.sleep(.1)
+
+            # vals = [s3.value(), s4.value()]
+            # print(vals)
+
+
+            vals = self.read([self.SEN_3, self.SEN_4])
+            print(vals)
+
+
+
+            # if vals == [0,0]:
+            #     print("No line read")
+            # elif vals == [0,1]:
+            #     print("Right side ")
+            # elif vals == [1,0]:
+            #     print("Left side ")
+            # elif vals == [1,1]:
+            #     print("both")
+            # else:
+            #     print("nothing?")
+
             yield
 
     # FUNC
