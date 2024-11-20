@@ -102,7 +102,9 @@ class TaskManager:
             for i in range(0, len(sensors)):
                 if (sensors[i].value() == 0) and (t < sensorValues[i]):
                     # record the first time the line reads low
-                    sensorValues[i] = t // 2048
+                    sensorValues[i] = t // 850
+
+        
 
         return sensorValues
 
