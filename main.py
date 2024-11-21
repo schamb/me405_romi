@@ -24,7 +24,8 @@ class TaskManager:
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
-        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 6, 6
+        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 10, 10
+        self.SPEED = 10
 
         #pins for line sensor
         self.SEN_0 = Pin.cpu.B14
@@ -33,6 +34,7 @@ class TaskManager:
         self.SEN_4 = Pin.cpu.B12
         self.SEN_5 = Pin.cpu.B10
         self.SEN_7 = Pin.cpu.B13
+        self.white = 0
 
 
         # motors and encoders
@@ -55,6 +57,14 @@ class TaskManager:
         self.print_motor_data_flag = True
         self.move_flag = False
         self.update_position_flag = False
+        self.read_line_flag = False
+
+        self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
+        
+
+        self.STOP = False
+        self.WALL = False
+        self.PHASE = "back"
 
         # create tasks
         self.create_tasks()
@@ -66,12 +76,14 @@ class TaskManager:
         update_position = cotask.Task(self.task_update_position, priority=0, period=10, profile=True, trace=False)
         print_motor_data = cotask.Task(self.task_print_motor_data, priority=1, period=150, profile=True, trace=False)
         read_line = cotask.Task(self.task_read_line, priority=8, period = 30, profile=True, trace=False)
+        bump = cotask.Task(self.task_bump, priority=8, period = 30, profile=True, trace=False)
 
         cotask.task_list.append(controller)
         cotask.task_list.append(read_line)
         cotask.task_list.append(move)
         cotask.task_list.append(adjust_speed)
         cotask.task_list.append(update_position)
+        cotask.task_list.append(bump)
         #cotask.task_list.append(print_motor_data)
 
     def read(self, sensors):
@@ -106,28 +118,34 @@ class TaskManager:
                     # record the first time the line reads low
                     sensorValues[i] = t 
 
-        Kg = .5
+        Kg = .83
         scaled = [0, 0, 0, 0, 0, 0]
         scaled[0] = -15 if sensorValues[5] > 900 else 0 #PIN0
         scaled[1] = -5 if sensorValues[4] > 900 else 0 #PIN2
         scaled[2] = -1 if sensorValues[3] > 700 else 0 #PIN3
         scaled[3] = 1 if sensorValues[2] > 700 else 0 #PIN4
-        scaled[4] =5 if sensorValues[1] > 900 else 0 #PIN5
+        scaled[4] = 5 if sensorValues[1] > 900 else 0 #PIN5
         scaled[5] = 15 if sensorValues[0] > 900 else 0 #PIN7
+
+        print(scaled)
+        # if scaled.count(0) == len(scaled):
+        #     self.STOP = True
+
+
+
+
         wl = Kg*sum(scaled)
         if wl < 0:
-            self.VELOCITY_RAD_L = 6 + wl
-            self.VELOCITY_RAD_R = 6 - wl
+            self.VELOCITY_RAD_L = self.SPEED + wl
+            self.VELOCITY_RAD_R = self.SPEED - wl
         elif wl > 0:
-            self.VELOCITY_RAD_L = 6 + wl
-            self.VELOCITY_RAD_R = 6 - wl
+            self.VELOCITY_RAD_L = self.SPEED + wl
+            self.VELOCITY_RAD_R = self.SPEED - wl
         else:
-            self.VELOCITY_RAD_L = 6
-            self.VELOCITY_RAD_R = 6
+            self.VELOCITY_RAD_L = self.SPEED
+            self.VELOCITY_RAD_R = self.SPEED
         
         return sensorValues
-
-
 
 
     def run_tasks(self):
@@ -141,15 +159,40 @@ class TaskManager:
 
     # TASK
 
+
     def task_controller(self):
-        destination = 300000
         while True:
             # if romi is not at his destination then he should move
-            if destination > self.posAbs:
+            if not self.STOP:
                 self.move_flag = True
+                self.read_line_flag = True
             else:
                 self.move_flag = False
+                self.read_line_flag = False
 
+            while self.WALL:
+                pos = self.posAbs
+                while self.posAbs < self.DESTINATION + pos:
+                    if self.PHASE == "back":
+                        self.VELOCITY_RAD_L = -1 * self.SPEED
+                        self.VELOCITY_RAD_R = -1 * self.SPEED
+                    self.move_flag = True
+                    yield
+                
+                self.WALL = False
+
+            yield
+
+    def task_bump(self):
+        bmp = True
+        while True:
+            while bmp:
+                print(self.BMP.value())
+                if self.BMP.value() == 0:
+                    self.STOP = True
+                    self.WALL = True
+                    bmp = False
+                yield
             yield
 
     def task_move(self):
@@ -207,44 +250,36 @@ class TaskManager:
 
     def task_read_line(self):
         while True:
+            while self.read_line_flag:
 
-            #s3 = Pin(self.SEN_3, Pin.OUT)
-            # s4 = Pin(self.SEN_4, Pin.OUT)
-
-            # s3.value(1)
-            # s4.value(1)
-
-            # time.sleep(.00001)
-
-            # s3.init(s3.IN)
-            # s4.init(s4.IN)
-
-            # #time.sleep(.1)
-
-            # vals = [s3.value(), s4.value()]
-            # print(vals)
-
-
-            vals = self.read([self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7])
-            print(vals)
-
-
-
-            # if vals == [0,0]:
-            #     print("No line read")
-            # elif vals == [0,1]:
-            #     print("Right side ")
-            # elif vals == [1,0]:
-            #     print("Left side ")
-            # elif vals == [1,1]:
-            #     print("both")
-            # else:
-            #     print("nothing?")
+                vals = self.read([self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7])
+                yield
 
             yield
 
     # FUNC
     # TODO functions
+    def go_back(self, e_ticks):
+        print("going back")
+        self.move_flag = False
+
+        start = self.posAbs
+        self.VELOCITY_RAD_L = -.5 * self.SPEED
+        self.VELOCITY_RAD_R = -.5 * self.SPEED
+        self.move_flag = True
+
+        return
+        while self.posAbs < start + e_ticks:
+            self.posR = self.encR.get_position()
+            self.posL = self.encL.get_position()
+            self.posAbs = self.get_absolute_position()
+
+        return
+
+        self.move_flag = False
+
+
+
     def get_new_duty(self, vleft, vright):
         # function to calculate the new duty cycles of the motors
 
