@@ -113,18 +113,15 @@ class TaskManager:
         scaled[3] = 2 if sensorValues[0] > 0 else 0 #PIN5
         wl = Kg*sum(scaled)
         if wl < 0:
-            self.VELOCITY_RAD_L += .5
-            self.VELOCITY_RAD_R -= .5
+            self.VELOCITY_RAD_L = 7.5
+            self.VELOCITY_RAD_R = 3.5
         elif wl > 0:
-            self.VELOCITY_RAD_L -= .5
-            self.VELOCITY_RAD_R += .5
+            self.VELOCITY_RAD_L = 3.5
+            self.VELOCITY_RAD_R = 7.5
         else:
             self.VELOCITY_RAD_L = 6
             self.VELOCITY_RAD_R = 6
         
-
-
-
         return sensorValues
 
 
