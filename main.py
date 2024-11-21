@@ -173,7 +173,7 @@ class TaskManager:
             while self.WALL:
                 print(self.PHASES[0])
                 pos = self.posAbs
-                angle = 360 - self.IMU.euler()[0]
+                angle = 180 - self.IMU.euler()[0]
                 phase = self.PHASES.pop(0)
                 cond = True
                 while cond:
@@ -185,9 +185,9 @@ class TaskManager:
                     elif phase == "turn":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
-                        current_angle = 360 - self.IMU.euler()[0] 
-                        print(f"{abs(current_angle - angle)}")
-                        cond = abs(current_angle - angle) < 90
+                        current_angle = 180 - self.IMU.euler()[0] 
+                        print(f"{abs(abs(current_angle) - abs(angle))}")
+                        cond = abs(abs(current_angle) - abs(angle)) < 70
                     yield
 
                 if len(self.PHASES) == 0:
