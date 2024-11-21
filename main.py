@@ -24,7 +24,7 @@ class TaskManager:
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
-        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.get_wheel_velocity(10)
+        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 3, 3
 
         #pins for line sensor
         #self.SEN_0 =
@@ -59,11 +59,11 @@ class TaskManager:
 
     def create_tasks(self):
         controller = cotask.Task(self.task_controller, priority=5, period=40, profile=True, trace=False)
-        move = cotask.Task(self.task_move, priority=6, period=30, profile=True, trace=False)
+        move = cotask.Task(self.task_move, priority=6, period=25, profile=True, trace=False)
         adjust_speed = cotask.Task(self.task_adjust_speed, priority=7, period=20, profile=True, trace=False)
         update_position = cotask.Task(self.task_update_position, priority=0, period=10, profile=True, trace=False)
         print_motor_data = cotask.Task(self.task_print_motor_data, priority=1, period=150, profile=True, trace=False)
-        read_line = cotask.Task(self.task_read_line, priority=6, period=1000, profile=True, trace=False)
+        read_line = cotask.Task(self.task_read_line, priority=8, period = 30, profile=True, trace=False)
 
         cotask.task_list.append(controller)
         cotask.task_list.append(read_line)
@@ -104,7 +104,16 @@ class TaskManager:
                     # record the first time the line reads low
                     sensorValues[i] = t // 850
 
+        Kg = .05
+        scaled = [0, 0]
+        scaled[0] = -1 if sensorValues[1] > 0 else 0
+        scaled[1] = 1 if sensorValues[0] > 0 else 0
+        wl = Kg*sum(scaled)
+        self.VELOCITY_RAD_L = self.VELOCITY_RAD_L + wl
+        self.VELOCITY_RAD_R = self.VELOCITY_RAD_R - wl
         
+
+
 
         return sensorValues
 
@@ -123,13 +132,13 @@ class TaskManager:
     # TASK
 
     def task_controller(self):
-        destination = self.yaw
+        destination = 300000
         while True:
             # if romi is not at his destination then he should move
-            # if destination > (2*math.pi / 360 )*self.IMU.euler()[0] :
-            #     self.move_flag = True
-            # else:
-            #     self.move_flag = False
+            if destination > self.posAbs:
+                self.move_flag = True
+            else:
+                self.move_flag = False
 
             yield
 
