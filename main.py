@@ -64,7 +64,7 @@ class TaskManager:
 
         self.STOP = False
         self.WALL = False
-        self.PHASE = "back"
+        self.PHASES = ["back", "turn"]
 
         # create tasks
         self.create_tasks()
@@ -171,16 +171,28 @@ class TaskManager:
                 self.read_line_flag = False
 
             while self.WALL:
-                print("encountered wall")
+                print(self.PHASES[0])
                 pos = self.posAbs
-                while self.posAbs > (pos - self.DESTINATION):
+                angle = 360 - self.IMU.euler()[0]
+                phase = self.PHASES.pop(0)
+                cond = True
+                while cond:
                     self.move_flag = True
-                    if self.PHASE == "back":
+                    if phase == "back":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
+                        cond = self.posAbs > (pos - self.DESTINATION)
+                    elif phase == "turn":
+                        self.VELOCITY_RAD_L = -1 * self.SPEED
+                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        current_angle = 360 - self.IMU.euler()[0] 
+                        print(f"{abs(current_angle - angle)}")
+                        cond = abs(current_angle - angle) < 90
                     yield
-                print("done with wall")
-                self.WALL = False
+
+                if len(self.PHASES) == 0:
+                    print("done with wall")
+                    self.WALL = False
                 yield
 
             yield
