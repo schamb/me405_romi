@@ -108,12 +108,12 @@ class TaskManager:
 
         Kg = .5
         scaled = [0, 0, 0, 0, 0, 0]
-        scaled[0] = -20 if sensorValues[5] > 900 else 0 #PIN0
-        scaled[1] = -2 if sensorValues[4] > 900 else 0 #PIN2
+        scaled[0] = -15 if sensorValues[5] > 900 else 0 #PIN0
+        scaled[1] = -5 if sensorValues[4] > 900 else 0 #PIN2
         scaled[2] = -1 if sensorValues[3] > 700 else 0 #PIN3
         scaled[3] = 1 if sensorValues[2] > 700 else 0 #PIN4
-        scaled[4] = 2 if sensorValues[1] > 900 else 0 #PIN5
-        scaled[5] = 20 if sensorValues[0] > 900 else 0 #PIN7
+        scaled[4] =5 if sensorValues[1] > 900 else 0 #PIN5
+        scaled[5] = 15 if sensorValues[0] > 900 else 0 #PIN7
         wl = Kg*sum(scaled)
         if wl < 0:
             self.VELOCITY_RAD_L = 6 + wl
