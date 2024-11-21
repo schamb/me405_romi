@@ -64,7 +64,7 @@ class TaskManager:
 
         self.STOP = False
         self.WALL = False
-        self.PHASES = ["back", "turn"]
+        self.PHASES = ["back", "turn", "go", "turn2", "go"]
 
         # create tasks
         self.create_tasks()
@@ -183,11 +183,22 @@ class TaskManager:
                         self.VELOCITY_RAD_R = -1 * self.SPEED
                         cond = self.posAbs > (pos - self.DESTINATION)
                     elif phase == "turn":
+                        self.VELOCITY_RAD_L = 1 * self.SPEED
+                        self.VELOCITY_RAD_R = -1 * self.SPEED
+                        current_angle = 180 - self.IMU.euler()[0] 
+                        print(f"{abs(abs(current_angle) - abs(angle))}")
+                        cond = abs(abs(current_angle) - abs(angle)) < 70
+                    elif phase == "turn2":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         current_angle = 180 - self.IMU.euler()[0] 
                         print(f"{abs(abs(current_angle) - abs(angle))}")
                         cond = abs(abs(current_angle) - abs(angle)) < 70
+                    elif phase == "go":
+                        self.VELOCITY_RAD_L = 1 * self.SPEED
+                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        cond = self.posAbs < (pos + self.DESTINATION)
+
                     yield
 
                 if len(self.PHASES) == 0:
