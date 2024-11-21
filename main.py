@@ -24,13 +24,14 @@ class TaskManager:
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
-        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 3, 3
+        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 6, 6
 
         #pins for line sensor
         #self.SEN_0 =
-        #self.SEN_2 =
+        self.SEN_2 = Pin.cpu.B15
         self.SEN_3 = Pin.cpu.B11
         self.SEN_4 = Pin.cpu.B12
+        self.SEN_5 = Pin.cpu.B10
 
 
         # motors and encoders
@@ -102,15 +103,24 @@ class TaskManager:
             for i in range(0, len(sensors)):
                 if (sensors[i].value() == 0) and (t < sensorValues[i]):
                     # record the first time the line reads low
-                    sensorValues[i] = t // 850
+                    sensorValues[i] = t // 1110
 
         Kg = .05
-        scaled = [0, 0]
-        scaled[0] = -1 if sensorValues[1] > 0 else 0
-        scaled[1] = 1 if sensorValues[0] > 0 else 0
+        scaled = [0, 0, 0, 0]
+        scaled[0] = -2 if sensorValues[3] > 0 else 0 #PIN2
+        scaled[1] = -1 if sensorValues[2] > 0 else 0 #PIN3
+        scaled[2] = 1 if sensorValues[1] > 0 else 0 #PIN4
+        scaled[3] = 2 if sensorValues[0] > 0 else 0 #PIN5
         wl = Kg*sum(scaled)
-        self.VELOCITY_RAD_L = self.VELOCITY_RAD_L + wl
-        self.VELOCITY_RAD_R = self.VELOCITY_RAD_R - wl
+        if wl < 0:
+            self.VELOCITY_RAD_L += .5
+            self.VELOCITY_RAD_R -= .5
+        elif wl > 0:
+            self.VELOCITY_RAD_L -= .5
+            self.VELOCITY_RAD_R += .5
+        else:
+            self.VELOCITY_RAD_L = 6
+            self.VELOCITY_RAD_R = 6
         
 
 
@@ -215,7 +225,7 @@ class TaskManager:
             # print(vals)
 
 
-            vals = self.read([self.SEN_3, self.SEN_4])
+            vals = self.read([self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5])
             print(vals)
 
 
