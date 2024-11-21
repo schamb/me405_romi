@@ -20,7 +20,7 @@ class TaskManager:
     def __init__(self, motorL, motorR, encL, encR, IMU):
         self.IMU = IMU
         # constants
-        self.DESTINATION = 11500
+        self.DESTINATION = 1000
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
@@ -171,15 +171,17 @@ class TaskManager:
                 self.read_line_flag = False
 
             while self.WALL:
+                print("encountered wall")
                 pos = self.posAbs
-                while self.posAbs < self.DESTINATION + pos:
+                while self.posAbs > (pos - self.DESTINATION):
+                    self.move_flag = True
                     if self.PHASE == "back":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
-                    self.move_flag = True
                     yield
-                
+                print("done with wall")
                 self.WALL = False
+                yield
 
             yield
 
