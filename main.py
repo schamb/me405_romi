@@ -22,7 +22,7 @@ class TaskManager:
         # constants
         self.DESTINATION = 1000
         self.forward1 = 4000
-        self.forward2 = 1500
+        self.forward2 = 1800
         self.forward3 = 1500
         self.back_dist = 1500
         self.yaw = 2*math.pi - 0.1
@@ -146,7 +146,7 @@ class TaskManager:
         else:
             self.BLACK = True
 
-        if self.end_count == 18:
+        if self.end_count == 22:
             self.STOP = True
 
         
@@ -231,7 +231,7 @@ class TaskManager:
                         self.encR.update()
                         current_angle = self.encR.get_position()
                         print(f"{current_angle - posL}")
-                        cond =  (current_angle - posL < 800)
+                        cond =  (current_angle - posL < 600)
 
                     yield
 
