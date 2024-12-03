@@ -21,10 +21,10 @@ class TaskManager:
         self.IMU = IMU
         # constants
         self.DESTINATION = 1000
-        self.forward1 = 1800
-        self.forward2 = 3000
+        self.forward1 = 4000
+        self.forward2 = 2000
         self.forward3 = 1500
-        self.back_dist = 100
+        self.back_dist = 1500
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
@@ -65,11 +65,12 @@ class TaskManager:
 
         self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
         self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
-        
+
 
         self.STOP = False
         self.WALL = False
-        self.PHASES = ["back", "turnR", "forward1", "turnL", "forward2", "turnL", "forward3", "turnR"]
+        self.PHASES = ["back", "turn45", "forward1", "turn90", "forward2"]
+        self.phase = "back"
 
         # create tasks
         self.create_tasks()
@@ -121,7 +122,7 @@ class TaskManager:
             for i in range(0, len(sensors)):
                 if (sensors[i].value() == 0) and (t < sensorValues[i]):
                     # record the first time the line reads low
-                    sensorValues[i] = t 
+                    sensorValues[i] = t
 
         Kg = .83
         scaled = [0, 0, 0, 0, 0, 0]
@@ -132,7 +133,7 @@ class TaskManager:
         scaled[4] = 5 if sensorValues[1] > 900 else 0 #PIN5
         scaled[5] = 15 if sensorValues[0] > 900 else 0 #PIN7
 
-        print(scaled)
+        #print(scaled)
         # if scaled.count(0) == len(scaled):
         #     self.STOP = True
 
@@ -149,7 +150,7 @@ class TaskManager:
         else:
             self.VELOCITY_RAD_L = self.SPEED
             self.VELOCITY_RAD_R = self.SPEED
-        
+
         return sensorValues
 
 
@@ -176,29 +177,17 @@ class TaskManager:
                 self.read_line_flag = False
 
             while self.WALL:
-                print(self.PHASES[0])
                 pos = self.posAbs
-                angle = 180 - self.IMU.euler()[0]
                 phase = self.PHASES.pop(0)
                 cond = True
+                angle = abs(self.IMU.euler()[0])
+                print(phase)
                 while cond:
                     self.move_flag = True
                     if phase == "back":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
                         cond = self.posAbs > (pos - self.back_dist)
-                    elif phase == "turnR":
-                        self.VELOCITY_RAD_L = 1 * self.SPEED
-                        self.VELOCITY_RAD_R = -1 * self.SPEED
-                        current_angle = 180 - self.IMU.euler()[0] 
-                        print(f"{abs(abs(current_angle) - abs(angle))}")
-                        cond = abs(abs(current_angle) - abs(angle)) < 70
-                    elif phase == "turnL":
-                        self.VELOCITY_RAD_L = -1 * self.SPEED
-                        self.VELOCITY_RAD_R = 1 * self.SPEED
-                        current_angle = 180 - self.IMU.euler()[0] 
-                        print(f"{abs(abs(current_angle) - abs(angle))}")
-                        cond = abs(abs(current_angle) - abs(angle)) < 70
                     elif phase == "forward1":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
@@ -207,10 +196,17 @@ class TaskManager:
                         self.VELOCITY_RAD_L = 1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         cond = self.posAbs < (pos + self.forward2)
-                    elif phase == "forward3":
+                    elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
+                        self.VELOCITY_RAD_R = -1 * self.SPEED
+                        current_angle = abs(self.IMU.euler()[0] )
+                        cond = abs(current_angle - angle) < 23
+                    elif phase == "turn90":
+                        self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
-                        cond = self.posAbs < (pos + self.forward3)
+                        current_angle = abs(self.IMU.euler()[0] )
+                        print(f"{abs(current_angle - angle)}")
+                        cond = abs(current_angle - angle) < 70
 
                     yield
 
@@ -226,7 +222,7 @@ class TaskManager:
         bmp = True
         while True:
             while bmp:
-                print(self.BMP.value())
+                #print(self.BMP.value())
                 if self.BMP.value() == 0:# or self.BMP2.value() == 0:
                     self.STOP = True
                     self.WALL = True
