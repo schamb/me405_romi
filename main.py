@@ -25,6 +25,7 @@ class TaskManager:
         self.forward2 = 1800
         self.forward3 = 1500
         self.back_dist = 1500
+        self.return_dist = 4050
         self.yaw = 2*math.pi - 0.1
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
