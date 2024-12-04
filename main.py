@@ -25,12 +25,13 @@ class TaskManager:
         self.forward2 = 1800
         self.forward3 = 1500
         self.back_dist = 1500
-        self.return_dist = 4050
+        self.return_dist = 2000
         self.yaw = 2*math.pi - 0.1
+        self.white_goal = 10# 22
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 10, 10
-        self.SPEED = 10
+        self.SPEED = -10
 
         #pins for line sensor
         self.SEN_0 = Pin.cpu.B14
@@ -71,7 +72,9 @@ class TaskManager:
         self.STOP = False
         self.WALL = False
         self.PHASES = ["back", "turn45", "forward1", "turn90", "forward2"]
+        self.END_PHASES = ["back", "follow line", "back", "stop"]
         self.phase = "back"
+        self.END = False
 
         self.BLACK = False
         self.WHITE = False
@@ -147,10 +150,14 @@ class TaskManager:
         else:
             self.BLACK = True
 
-        if self.end_count == 22:
+        if self.end_count == self.white_goal:#22:
             self.STOP = True
+            print("end triggered")
+            self.END = True
+            self.white_goal = 5
+            self.end_count = 0
 
-        
+
 
 
 
@@ -164,15 +171,19 @@ class TaskManager:
 
 
         wl = Kg*sum(scaled)
-        if wl < 0:
+        if wl > 0:
             self.VELOCITY_RAD_L = self.SPEED + wl
             self.VELOCITY_RAD_R = self.SPEED - wl
-        elif wl > 0:
+        elif wl < 0:
             self.VELOCITY_RAD_L = self.SPEED + wl
             self.VELOCITY_RAD_R = self.SPEED - wl
         else:
             self.VELOCITY_RAD_L = self.SPEED
             self.VELOCITY_RAD_R = self.SPEED
+            # if True:
+            #     self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = (-1 * self.VELOCITY_RAD_L), (-1 * self.VELOCITY_RAD_R)
+
+        
 
         return sensorValues
 
@@ -234,6 +245,10 @@ class TaskManager:
                         print(f"{current_angle - posL}")
                         cond =  (current_angle - posL < 600)
 
+
+
+
+
                     yield
 
                 if len(self.PHASES) == 0:
@@ -243,7 +258,48 @@ class TaskManager:
                     self.BLACK = False
                 yield
 
+            while self.END:
+                pos = self.posAbs
+                phase = self.END_PHASES.pop(0)
+                cond = True
+                print(phase)
+                self.read_line_flag = False
+                while cond:
+                    self.move_flag = True
+                    if phase == "back":
+                        self.VELOCITY_RAD_L = -1 * self.SPEED
+                        self.VELOCITY_RAD_R = -1 * self.SPEED
+                        cond = self.posAbs > (pos - self.return_dist)
+                    elif phase == "follow line":
+                        self.read_line_flag = True
+                        cond = self.white_goal > self.end_count
+                    elif phase == "stop":
+                        cond = False
+
+                    yield
+                if len(self.PHASES) == 0:
+                    print("done with wall")
+                    self.WALL = False
+                    self.STOP = False
+                    self.BLACK = False
+                    self.END = False
+                yield
+            # if self.END:
+            #     self.move_flag = True
+            #     self.read_line_flag = True
+
+
+                # pos = self.posAbs
+                # while self.posAbs > pos - self.return_dist:
+                #     self.move_flag = True
+                #     self.VELOCITY_RAD_L = -1 * self.SPEED
+                #     self.VELOCITY_RAD_R = -1 * self.SPEED
+                #     yield
+                # self.move_flag = False
+                # self.END = False
+
             yield
+
 
     def task_bump(self):
         bmp = True
@@ -313,8 +369,12 @@ class TaskManager:
     def task_read_line(self):
         while True:
             while self.read_line_flag:
+                sensors = [self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7]
+                if True:
+                    sensors = sensors[::-1]
 
-                vals = self.read([self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7])
+
+                vals = self.read(sensors)
                 yield
 
             yield
