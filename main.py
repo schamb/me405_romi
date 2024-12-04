@@ -21,17 +21,18 @@ class TaskManager:
         self.IMU = IMU
         # constants
         self.DESTINATION = 1000
-        self.forward1 = 4000
+        self.forward1 = 3700
         self.forward2 = 1800
         self.forward3 = 1500
         self.back_dist = 1500
-        self.return_dist = 2000
+        self.return_dist = 6000
+        self.angle = 625
         self.yaw = 2*math.pi - 0.1
-        self.white_goal = 10# 22
+        self.white_goal = 6
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 10, 10
-        self.SPEED = -10
+        self.SPEED = 10
 
         #pins for line sensor
         self.SEN_0 = Pin.cpu.B14
@@ -72,7 +73,7 @@ class TaskManager:
         self.STOP = False
         self.WALL = False
         self.PHASES = ["back", "turn45", "forward1", "turn90", "forward2"]
-        self.END_PHASES = ["back", "follow line", "back", "stop"]
+        self.END_PHASES = ["turn180", "stop", "stop", "stop", "stop", "stop", "stop"]
         self.phase = "back"
         self.END = False
 
@@ -171,10 +172,10 @@ class TaskManager:
 
 
         wl = Kg*sum(scaled)
-        if wl > 0:
+        if wl < 0:
             self.VELOCITY_RAD_L = self.SPEED + wl
             self.VELOCITY_RAD_R = self.SPEED - wl
-        elif wl < 0:
+        elif wl > 0:
             self.VELOCITY_RAD_L = self.SPEED + wl
             self.VELOCITY_RAD_R = self.SPEED - wl
         else:
@@ -243,12 +244,7 @@ class TaskManager:
                         self.encR.update()
                         current_angle = self.encR.get_position()
                         print(f"{current_angle - posL}")
-                        cond =  (current_angle - posL < 600)
-
-
-
-
-
+                        cond =  (current_angle - posL < self.angle)
                     yield
 
                 if len(self.PHASES) == 0:
@@ -264,23 +260,24 @@ class TaskManager:
                 cond = True
                 print(phase)
                 self.read_line_flag = False
-                while cond:
+                while cond and phase != "stop":
                     self.move_flag = True
                     if phase == "back":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
                         cond = self.posAbs > (pos - self.return_dist)
-                    elif phase == "follow line":
-                        self.read_line_flag = True
-                        cond = self.white_goal > self.end_count
-                    elif phase == "stop":
-                        cond = False
+                    elif phase == "turn180":
+                        self.VELOCITY_RAD_L = -1 * self.SPEED
+                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        angle = abs(self.IMU.euler()[0])
+                        print(f"angle: {angle}")
+                        cond = (angle >= 5) or (angle <= 355)
 
                     yield
-                if len(self.PHASES) == 0:
+                if len(self.END_PHASES) == 0 or phase == "stop":
                     print("done with wall")
                     self.WALL = False
-                    self.STOP = False
+                    self.STOP = True
                     self.BLACK = False
                     self.END = False
                 yield
@@ -370,9 +367,6 @@ class TaskManager:
         while True:
             while self.read_line_flag:
                 sensors = [self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7]
-                if True:
-                    sensors = sensors[::-1]
-
 
                 vals = self.read(sensors)
                 yield
