@@ -27,7 +27,7 @@ class TaskManager:
         self.back_dist = 750
         self.return_dist = 2800
         self.adjust_forward_dist = 300
-        self.angle = 550
+        self.angle = 625
         self.yaw = 2*math.pi - 0.1
         self.white_goal = 22
         # How are we going to do velocity? A vector?
@@ -225,16 +225,16 @@ class TaskManager:
                 while cond:
                     self.move_flag = True
                     if phase == "back":
-                        self.VELOCITY_RAD_L = -3 * self.SPEED
-                        self.VELOCITY_RAD_R = -3 * self.SPEED
+                        self.VELOCITY_RAD_L = -2 * self.SPEED
+                        self.VELOCITY_RAD_R = -2 * self.SPEED
                         cond = self.posAbs > (pos - self.back_dist)
                     elif phase == "forward1":
                         self.VELOCITY_RAD_L = 3* self.SPEED
                         self.VELOCITY_RAD_R = 3 * self.SPEED
                         cond = self.posAbs < (pos + self.forward1)
                     elif phase == "forward2":
-                        self.VELOCITY_RAD_L = 3 * self.SPEED
-                        self.VELOCITY_RAD_R = 3 * self.SPEED
+                        self.VELOCITY_RAD_L = 2 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.forward2)
                     elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
@@ -318,7 +318,7 @@ class TaskManager:
         while True:
             while bmp:
                 #print(self.BMP.value())
-                if self.BMP.value() == 0:# or self.BMP2.value() == 0:
+                if self.BMP.value() == 0 or self.BMP2.value() == 0:
                     self.STOP = True
                     self.WALL = True
                     bmp = False
