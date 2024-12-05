@@ -225,16 +225,16 @@ class TaskManager:
                 while cond:
                     self.move_flag = True
                     if phase == "back":
-                        self.VELOCITY_RAD_L = -2 * self.SPEED
-                        self.VELOCITY_RAD_R = -2 * self.SPEED
+                        self.VELOCITY_RAD_L = -3 * self.SPEED
+                        self.VELOCITY_RAD_R = -3 * self.SPEED
                         cond = self.posAbs > (pos - self.back_dist)
                     elif phase == "forward1":
-                        self.VELOCITY_RAD_L = 2 * self.SPEED
-                        self.VELOCITY_RAD_R = 2 * self.SPEED
+                        self.VELOCITY_RAD_L = 3* self.SPEED
+                        self.VELOCITY_RAD_R = 3 * self.SPEED
                         cond = self.posAbs < (pos + self.forward1)
                     elif phase == "forward2":
-                        self.VELOCITY_RAD_L = 2 * self.SPEED
-                        self.VELOCITY_RAD_R = 2 * self.SPEED
+                        self.VELOCITY_RAD_L = 3 * self.SPEED
+                        self.VELOCITY_RAD_R = 3 * self.SPEED
                         cond = self.posAbs < (pos + self.forward2)
                     elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
