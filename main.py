@@ -26,7 +26,7 @@ class TaskManager:
         self.forward3 = 1500
         self.back_dist = 1500
         self.return_dist = 6000
-        self.angle = 625
+        self.angle = 615
         self.yaw = 2*math.pi - 0.1
         self.white_goal = 6
         # How are we going to do velocity? A vector?
@@ -73,7 +73,7 @@ class TaskManager:
         self.STOP = False
         self.WALL = False
         self.PHASES = ["back", "turn45", "forward1", "turn90", "forward2"]
-        self.END_PHASES = ["turn180", "stop", "stop", "stop", "stop", "stop", "stop"]
+        self.END_PHASES = ["turn180", "stop", "stop", "stop", "stop"]
         self.phase = "back"
         self.END = False
 
@@ -155,7 +155,7 @@ class TaskManager:
             self.STOP = True
             print("end triggered")
             self.END = True
-            self.white_goal = 5
+            self.white_goal = 7
             self.end_count = 0
 
 
@@ -255,6 +255,8 @@ class TaskManager:
                 yield
 
             while self.END:
+                angle = abs(self.IMU.euler()[0])
+                print(f"start angle: {angle}")
                 pos = self.posAbs
                 phase = self.END_PHASES.pop(0)
                 cond = True
@@ -269,9 +271,9 @@ class TaskManager:
                     elif phase == "turn180":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
-                        angle = abs(self.IMU.euler()[0])
-                        print(f"angle: {angle}")
-                        cond = (angle >= 5) or (angle <= 355)
+                        current_angle = abs(self.IMU.euler()[0] )
+                        print(f"current angle: {current_angle} ({abs(current_angle - angle)})")
+                        cond = abs(abs(current_angle - angle)) < 165
 
                     yield
                 if len(self.END_PHASES) == 0 or phase == "stop":
