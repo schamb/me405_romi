@@ -21,19 +21,22 @@ class TaskManager:
         self.IMU = IMU
         # constants
         self.DESTINATION = 1000
-        self.forward1 = 3700
-        self.forward2 = 1800
+        self.forward1 = 3000
+        self.forward2 = 2000
         self.forward3 = 1500
-        self.back_dist = 1500
+        self.back_dist = 750
         self.return_dist = 2800
         self.adjust_forward_dist = 300
-        self.angle = 615
+        self.angle = 550
         self.yaw = 2*math.pi - 0.1
         self.white_goal = 22
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
-        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 10, 10
-        self.SPEED = 10
+        self.scale = 1.2
+        self.SPEED = 12
+        self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
+        
+        
 
         #pins for line sensor
         self.SEN_0 = Pin.cpu.B14
@@ -137,12 +140,12 @@ class TaskManager:
 
         Kg = .83
         scaled = [0, 0, 0, 0, 0, 0]
-        scaled[0] = -15 if sensorValues[5] > 900 else 0 #PIN0
-        scaled[1] = -5 if sensorValues[4] > 900 else 0 #PIN2
-        scaled[2] = -1 if sensorValues[3] > 700 else 0 #PIN3
-        scaled[3] = 1 if sensorValues[2] > 700 else 0 #PIN4
-        scaled[4] = 5 if sensorValues[1] > 900 else 0 #PIN5
-        scaled[5] = 15 if sensorValues[0] > 900 else 0 #PIN7
+        scaled[0] = -15*self.scale if sensorValues[5] > 900 else 0 #PIN0
+        scaled[1] = -5*self.scale if sensorValues[4] > 900 else 0 #PIN2
+        scaled[2] = -1*self.scale if sensorValues[3] > 700 else 0 #PIN3
+        scaled[3] = 1*self.scale if sensorValues[2] > 700 else 0 #PIN4
+        scaled[4] = 5*self.scale if sensorValues[1] > 900 else 0 #PIN5
+        scaled[5] = 15*self.scale if sensorValues[0] > 900 else 0 #PIN7
 
         if scaled.count(0) == 6:
             if self.BLACK:
@@ -222,16 +225,16 @@ class TaskManager:
                 while cond:
                     self.move_flag = True
                     if phase == "back":
-                        self.VELOCITY_RAD_L = -1 * self.SPEED
-                        self.VELOCITY_RAD_R = -1 * self.SPEED
+                        self.VELOCITY_RAD_L = -2 * self.SPEED
+                        self.VELOCITY_RAD_R = -2 * self.SPEED
                         cond = self.posAbs > (pos - self.back_dist)
                     elif phase == "forward1":
-                        self.VELOCITY_RAD_L = 1 * self.SPEED
-                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        self.VELOCITY_RAD_L = 2 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.forward1)
                     elif phase == "forward2":
-                        self.VELOCITY_RAD_L = 1 * self.SPEED
-                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        self.VELOCITY_RAD_L = 2 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.forward2)
                     elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
@@ -267,12 +270,12 @@ class TaskManager:
                 while cond and phase != "stop":
                     self.move_flag = True
                     if phase == "forward":
-                        self.VELOCITY_RAD_L = 1 * self.SPEED
-                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        self.VELOCITY_RAD_L = 2 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.return_dist)
                     elif phase == "adjust forward":
-                        self.VELOCITY_RAD_L = 1 * self.SPEED
-                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        self.VELOCITY_RAD_L = 2 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.adjust_forward_dist)
                     elif phase == "turn180":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
