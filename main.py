@@ -25,10 +25,11 @@ class TaskManager:
         self.forward2 = 1800
         self.forward3 = 1500
         self.back_dist = 1500
-        self.return_dist = 6000
+        self.return_dist = 2800
+        self.adjust_forward_dist = 300
         self.angle = 615
         self.yaw = 2*math.pi - 0.1
-        self.white_goal = 6
+        self.white_goal = 22
         # How are we going to do velocity? A vector?
         #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = 10, 10
@@ -73,7 +74,7 @@ class TaskManager:
         self.STOP = False
         self.WALL = False
         self.PHASES = ["back", "turn45", "forward1", "turn90", "forward2"]
-        self.END_PHASES = ["turn180", "stop", "stop", "stop", "stop"]
+        self.END_PHASES = ["turn180", "line sense", "forward", "stop", "stop", "stop", "stop"]
         self.phase = "back"
         self.END = False
 
@@ -155,8 +156,7 @@ class TaskManager:
             self.STOP = True
             print("end triggered")
             self.END = True
-            self.white_goal = 7
-            self.end_count = 0
+
 
 
 
@@ -255,6 +255,8 @@ class TaskManager:
                 yield
 
             while self.END:
+                self.white_goal = 7
+                self.end_count = 0
                 angle = abs(self.IMU.euler()[0])
                 print(f"start angle: {angle}")
                 pos = self.posAbs
@@ -264,16 +266,24 @@ class TaskManager:
                 self.read_line_flag = False
                 while cond and phase != "stop":
                     self.move_flag = True
-                    if phase == "back":
-                        self.VELOCITY_RAD_L = -1 * self.SPEED
-                        self.VELOCITY_RAD_R = -1 * self.SPEED
-                        cond = self.posAbs > (pos - self.return_dist)
+                    if phase == "forward":
+                        self.VELOCITY_RAD_L = 1 * self.SPEED
+                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        cond = self.posAbs < (pos + self.return_dist)
+                    elif phase == "adjust forward":
+                        self.VELOCITY_RAD_L = 1 * self.SPEED
+                        self.VELOCITY_RAD_R = 1 * self.SPEED
+                        cond = self.posAbs < (pos + self.adjust_forward_dist)
                     elif phase == "turn180":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         current_angle = abs(self.IMU.euler()[0] )
                         print(f"current angle: {current_angle} ({abs(current_angle - angle)})")
                         cond = abs(abs(current_angle - angle)) < 165
+                    elif phase == "line sense":
+                        #self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = self.SPEED, self.SPEED
+                        self.read_line_flag = True
+                        cond = not (self.end_count >= self.white_goal)
 
                     yield
                 if len(self.END_PHASES) == 0 or phase == "stop":
