@@ -35,6 +35,7 @@ class TaskManager:
         self.scale = 1.2
         self.SPEED = 12
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
+        self.STOP_BUTTON = False
         
         
 
@@ -229,8 +230,8 @@ class TaskManager:
                         self.VELOCITY_RAD_R = -2 * self.SPEED
                         cond = self.posAbs > (pos - self.back_dist)
                     elif phase == "forward1":
-                        self.VELOCITY_RAD_L = 3* self.SPEED
-                        self.VELOCITY_RAD_R = 3 * self.SPEED
+                        self.VELOCITY_RAD_L = 2* self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.forward1)
                     elif phase == "forward2":
                         self.VELOCITY_RAD_L = 2 * self.SPEED
@@ -680,10 +681,16 @@ def task_print_motor_data(shares):
 
 
 if __name__ == '__main__':
+    button = Pin(Pin.cpu.C13, Pin.IN, pull=Pin.PULL_UP)
     motorR, motorL = initialize_motors()
     encR, encL = initialize_encoders()
     i2c = machine.I2C(1)
     IMU = BNO055_2(i2c)
 
+
     tm = TaskManager(motorL, motorR, encL, encR, IMU)
+    
+    while button.value() == 1:
+        continue
+    tm.STOP_BUTTON = button
     tm.run_tasks()
