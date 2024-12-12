@@ -87,18 +87,6 @@ class Motor:
     def disable(self):
         self.sleep.low()
 
-    def task_run_motor(self, shares):
-        while True:
-            the_share, the_queue = shares
-            pos = the_queue.get()
-            the_queue.put(pos)
-            if (pos < 30000):
-                if self.duty == 0:
-                    self.set_duty(50)
-                yield
-            else:
-                self.set_duty(0)
-                yield
 
 
 class BNO055_2(BNO055):
