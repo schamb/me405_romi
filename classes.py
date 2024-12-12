@@ -54,7 +54,6 @@ class Encoder:
         self.velocity = (self.delta * math.pi) / (self.deltat * 720 / 1000000)  # retunrs rad/s
         return self.velocity
 
-
 # Motor driver class
 class Motor:
     # Intiilization
@@ -87,8 +86,7 @@ class Motor:
     def disable(self):
         self.sleep.low()
 
-
-
+# IMU class
 class BNO055_2(BNO055):
     def __init__(self, i2c, address=0x28, crystal=True, transpose=(0, 1, 2), sign=(0, 0, 0)):
         super().__init__(i2c, address, crystal, transpose, sign)
