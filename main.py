@@ -264,38 +264,32 @@ class TaskManager:
                 dutyR, dutyL = self.get_new_duty(self.VELOCITY_RAD_L, self.VELOCITY_RAD_R)  # this is what we would calculate with the IMU
                 self.motorR.set_duty(dutyR)
                 self.motorL.set_duty(dutyL)
-
                 yield
-
             yield
 
     def task_update_position(self):
         while True:
+            # update romi encoders to track position
             while self.update_position_flag:
                 self.encL.update()
                 self.encR.update()
-
                 self.posR = self.encR.get_position()
                 self.posL = self.encL.get_position()
                 self.posAbs = self.get_absolute_position()
-
                 yield
-
             yield
-
 
     def task_read_line(self):
         while True:
+            #task for line sensing
             while self.read_line_flag:
                 sensors = [self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7]
-
                 vals = self.read(sensors)
                 yield
 
             yield
 
-    # FUNC
-    # TODO functions
+    # FUNCTIONS
     def read(self, sensors):
         sensorValues = [0,0,0,0,0,0]
         maxValue = 4095
@@ -365,26 +359,7 @@ class TaskManager:
             if scaled.count(0) != 6:
                 print("line sensed")
                 self.line_sensed_flag = True
-
-    def go_back(self, e_ticks):
-        print("going back")
-        self.move_flag = False
-
-        start = self.posAbs
-        self.VELOCITY_RAD_L = -.5 * self.SPEED
-        self.VELOCITY_RAD_R = -.5 * self.SPEED
-        self.move_flag = True
-
-        return
-        while self.posAbs < start + e_ticks:
-            self.posR = self.encR.get_position()
-            self.posL = self.encL.get_position()
-            self.posAbs = self.get_absolute_position()
-
-        return
-
-        self.move_flag = False
-
+        
     def get_new_duty(self, vleft, vright):
         # function to calculate the new duty cycles of the motors
 
