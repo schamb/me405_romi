@@ -362,39 +362,25 @@ class TaskManager:
         
     def get_new_duty(self, vleft, vright):
         # function to calculate the new duty cycles of the motors
-
-        # Right now returs the preset duty cycle
-        # Should calculate and return the updated duty cycle for each motor
-        # to be set to to reach specified velocity
         velocityLreal = self.encL.get_velocity()
         velocityRreal = self.encR.get_velocity()
 
         L = 0
         R = 0
-
         Kpr = 3.8 #%s/rad
-        Kir = 0.6 #%/rad
-        Kdr = 0.04736 #%s2/rad
-
         Kpl = 3.06  # %s/rad
-        Kil = 0.6 # %/rad
-        Kdl = 0.0722  # %s2/rad
 
         #Feedback control for L Motor
         self.encL.update()
         ERRl = vleft - velocityLreal
         Fpl = Kpl*ERRl #%
-        Fil = Kil*ERRl*(self.encL.deltat/1000000) #%
-        Fdl = Kdl*ERRl/(self.encL.deltat/1000000) #%
-        L = Fpl #+ Fil + Fdl
+        L = Fpl
 
         # Feedback control for R Motor
         self.encR.update()
         ERRr = vright - velocityRreal
         Fpr = Kpr * ERRr  # %
-        Fir = Kir * ERRr * self.encR.deltat/1000000  # %
-        Fdr = Kdr * ERRr / (self.encR.deltat/1000000)  # %
-        R = Fpr #+ Fir + Fdr
+        R = Fpr 
 
         return R, L
 
