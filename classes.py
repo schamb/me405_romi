@@ -54,15 +54,6 @@ class Encoder:
         self.velocity = (self.delta * math.pi) / (self.deltat * 720 / 1000000)  # retunrs rad/s
         return self.velocity
 
-    # Gets position of each motor and prints it when able
-    def task_get_position(self, shares):
-        the_share, the_queue = shares
-        while True:
-            self.update()
-            if not the_queue.full():
-                the_queue.put(self.get_position())
-            yield 0
-
 
 # Motor driver class
 class Motor:
