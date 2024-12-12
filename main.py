@@ -19,8 +19,11 @@ More details.
 CLASSES
 """
 
+## TaskManager class for Romi.
+#
+# This class schedules and manages all tasks for the Romi.
 class TaskManager:
-    '''Class for managing Romi tasks.'''
+    ## Constructor
     def __init__(self, motorL, motorR, encL, encR, IMU):
         self.IMU = IMU
         # constants
@@ -84,8 +87,15 @@ class TaskManager:
         # create tasks
         self.create_tasks()
 
+    ## Creates tasks and adds them to the task list. 
+    #
+    # @arg @c controller
+    # @arg @c move
+    # @arg @c adjust_speed
+    # @arg @c update_position
+    # @arg @c read_line
+    # @arg @c bump
     def create_tasks(self):
-        '''Creates tasks and adds them to task list.'''
         controller = cotask.Task(self.task_controller, priority=5, period=40, profile=True, trace=False)
         move = cotask.Task(self.task_move, priority=6, period=25, profile=True, trace=False)
         adjust_speed = cotask.Task(self.task_adjust_speed, priority=7, period=20, profile=True, trace=False)
@@ -100,8 +110,8 @@ class TaskManager:
         cotask.task_list.append(update_position)
         cotask.task_list.append(bump)
        
+    ## Runs tasks until ctrl+c is pressed.
     def run_tasks(self):
-        '''Runs tasks until ctrl+c is pressed.'''
         while True:
             try:
                 cotask.task_list.pri_sched()
@@ -111,9 +121,15 @@ class TaskManager:
                 break
 
     # TASK
+    ## Main controller thread for the Romi.
+    #
+    # Controller is in charge of general phases. 
+    # Romi has four phases: 
+    # @arg @c normal line following
+    # @arg @c  wall sequence
+    # @arg @c end sequence
+    # @arg @c stop
     def task_controller(self):
-        '''Main controller thread for the Romi. Is in charge of general phases. Romi has four phases: normal line following, wall sequence, end sequence, and stop.'''
-        
         while True:
             # general stop flag, romi wil stop if no other flag is set
             if not self.STOP:
@@ -234,8 +250,8 @@ class TaskManager:
 
             yield
 
+    ## Task for polling the bump sensor.
     def task_bump(self):
-        '''Task for polling the bump sensor.'''
         bmp = True
         while True:
             while bmp:
@@ -247,8 +263,8 @@ class TaskManager:
                 yield
             yield
 
+    ## Task in charge of Romi movement.
     def task_move(self):
-        '''Task in charge of Romi movement.'''
         while True:
             while self.move_flag:
                 # speed up/slow down if we are going the wrong velocity
@@ -268,8 +284,8 @@ class TaskManager:
             self.update_position_flag = False
             yield
 
+    ## Task in charge of adjusting individual wheel speeds. 
     def task_adjust_speed(self):
-        '''Task in charge of adjusting individual wheel speeds.'''
         # takes in desired velocity for both motors
         while True:
             while self.adjust_speed_flag:
@@ -279,8 +295,8 @@ class TaskManager:
                 yield
             yield
 
+    ## Task for updating the position of the Romi.
     def task_update_position(self):
-        '''Task for updating the position of the Romi.'''
         while True:
             # update romi encoders to track position
             while self.update_position_flag:
@@ -292,8 +308,8 @@ class TaskManager:
                 yield
             yield
 
+    ## Task for reading the line sensor.
     def task_read_line(self):
-        '''Task for reading the line sensor.'''
         while True:
             #task for line sensing
             while self.read_line_flag:
@@ -304,8 +320,11 @@ class TaskManager:
             yield
 
     # FUNCTIONS
+
+    ## Function for reading the line sensor.
+    #
+    # @param sensors Array of sensors on the line sensor.
     def read(self, sensors):
-        '''Function for reading the line sensor.'''
         sensorValues = [0,0,0,0,0,0]
         maxValue = 4095
 
@@ -375,8 +394,11 @@ class TaskManager:
                 print("line sensed")
                 self.line_sensed_flag = True
         
-    def get_new_duty(self, vleft, vright):
-        '''Function for calculating a new duty cycle for each motor based off the speed they are already going.'''
+    ## Funciton for calculating a new duty cycle for each motor base off the speed they are already going.
+    #
+    # @param vleft Desired left motor velocity
+    # @param vright Desired right motor velocity
+    def get_new_duty(self, vleft: int, vright: int):
         # function to calculate the new duty cycles of the motors
         velocityLreal = self.encL.get_velocity()
         velocityRreal = self.encR.get_velocity()
@@ -400,12 +422,14 @@ class TaskManager:
 
         return R, L
 
+    ## Function to get the absolute position of the Romi.
     def get_absolute_position(self):
-        '''Function to get the absolute position of the Romi'''
         return (self.posL + self.posR) / 2
 
-    def get_wheel_velocity(self, times):
-        '''Function to get the wheel velocity of the Romi.'''
+    ## Function to get the wheel velocity of the romi.
+    #
+    # @param times Seconds
+    def get_wheel_velocity(self, times: int):
         rw = 2.76 #wheel radius, inches
         wromi = 5.55 #Chasi Diameter, inches
         D = 2*24 #circle diameter, inches
@@ -422,9 +446,8 @@ class TaskManager:
 FUNCTIONS
 """
 
-# Set up the motors in accordance with the Motor class
+## Initialize Romi motors using the Motor class
 def initialize_motors():
-    '''Initializes Romi motors.'''
     # Right Motor
     timer_R = Timer(8, freq=20000)
     phase_R = Pin(Pin.cpu.B5, mode=Pin.OUT)
@@ -440,9 +463,8 @@ def initialize_motors():
     return motor_R, motor_L
 
 
-# Sets up Romi encoders in accorance with the Encoder Class
+## Initialize Romi encoders using the Encoder class
 def initialize_encoders():
-    '''Initializes Romi encoders.'''
     tim_R = Timer(1, period=65535, prescaler=0)
     enc_R = Encoder(tim_R, Pin.cpu.A8, Pin.cpu.A9, 1, 2)  # A8 and A9
     tim_L = Timer(3, period=65535, prescaler=0)
