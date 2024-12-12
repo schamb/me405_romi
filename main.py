@@ -18,28 +18,32 @@ class TaskManager:
     def __init__(self, motorL, motorR, encL, encR, IMU):
         self.IMU = IMU
         # constants
-        self.DESTINATION = 1000
+
+        #WALL SEQUENCE
         self.forward1 = 3000
         self.forward2 = 2500
         self.back_dist = 750
+        self.angle = 500
+
+        #END SEQUENCE
         self.return_dist = 2500
         self.adjust_forward_dist = 2000
-        self.angle = 500
-        self.white_goal =9# 22
+        self.white_goal = 22
     
+        #SPEED CONTROL
         self.scale = 1.2
         self.SPEED = 12
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
-        self.LINE_SENSED = False
         
-        #pins for line sensor
+        #pins for line sensor and bumb sensor
         self.SEN_0 = Pin.cpu.B14
         self.SEN_2 = Pin.cpu.B15
         self.SEN_3 = Pin.cpu.B11
         self.SEN_4 = Pin.cpu.B12
         self.SEN_5 = Pin.cpu.B10
         self.SEN_7 = Pin.cpu.B13
-        self.white = 0
+        self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
+        self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
 
         # motors and encoders
         self.motorL = motorL
@@ -50,7 +54,7 @@ class TaskManager:
         # motor positions
         self.posR = 0
         self.posL = 0
-        self.posAbs = 0  # How do we store this?
+        self.posAbs = 0 
 
         # flags
         self.adjust_speed_flag = False  # task_speed_up
@@ -59,18 +63,17 @@ class TaskManager:
         self.update_position_flag = False
         self.read_line_flag = False
         self.sense_line_flag = False
+        self.line_sensed_flag = False
+        self.black_flag = False
 
-        self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
-        self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
-
+        #Phases
         self.STOP = False
         self.WALL = False
-        self.PHASES = ["back", "turn45", "forward1", "turn90", "adjust forward", "forward2", "orient"]
-        self.END_PHASES = ["turn180", "line sense","forward", "stop", "stop", "stop", "stop"]
         self.END = False
+        self.WALL_PHASES = ["back", "turn45", "forward1", "turn90", "adjust forward", "forward2", "orient"]
+        self.END_PHASES = ["turn180", "line sense","forward", "stop", "stop", "stop", "stop"]
 
-        self.BLACK = False
-        self.WHITE = False
+        #condition to trigger end phase
         self.end_count = 0
 
         # create tasks
@@ -116,7 +119,7 @@ class TaskManager:
 
             while self.WALL:
                 pos = self.posAbs
-                phase = self.PHASES.pop(0)
+                phase = self.WALL_PHASES.pop(0)
                 cond = True
                 angle = abs(self.IMU.euler()[0])
                 self.encR.update()
@@ -143,7 +146,7 @@ class TaskManager:
                         self.VELOCITY_RAD_R = 1.5 * self.SPEED
                         self.read_line_flag = True
                         self.sense_line_flag = True
-                        cond = not self.LINE_SENSED
+                        cond = not self.line_sensed_flag
                     elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
@@ -166,11 +169,11 @@ class TaskManager:
 
                     yield
 
-                if len(self.PHASES) == 0:
+                if len(self.WALL_PHASES) == 0:
                     print("done with wall")
                     self.WALL = False
                     self.STOP = False
-                    self.BLACK = False
+                    self.black_flag = False
                     self.SPEED = 1.5 * self.SPEED
                 yield
 
@@ -210,7 +213,7 @@ class TaskManager:
                     print("done with wall")
                     self.WALL = False
                     self.STOP = True
-                    self.BLACK = False
+                    self.black_flag = False
                     self.END = False
                 yield
 
@@ -335,12 +338,12 @@ class TaskManager:
 
         if not self.sense_line_flag:
             if scaled.count(0) == 6:
-                if self.BLACK:
+                if self.black_flag:
                     self.end_count += 1
                     print(f"line count: {self.end_count}")
-                self.BLACK = False
+                self.black_flag = False
             else:
-                self.BLACK = True
+                self.black_flag = True
 
             if self.end_count == self.white_goal:#22:
                 self.STOP = True
@@ -362,7 +365,7 @@ class TaskManager:
         else:
             if scaled.count(0) != 6:
                 print("line sensed")
-                self.LINE_SENSED = True
+                self.line_sensed_flag = True
 
     def go_back(self, e_ticks):
         print("going back")
