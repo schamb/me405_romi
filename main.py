@@ -106,8 +106,7 @@ class TaskManager:
     def task_controller(self):
         
         while True:
-            #print(f"{self.IMU.euler()[0]}")
-            # if romi is not at his destination then he should move
+            # general stop flag, romi wil stop if no other flag is set
             if not self.STOP:
                 self.move_flag = True
                 self.read_line_flag = True
@@ -115,16 +114,22 @@ class TaskManager:
                 self.move_flag = False
                 self.read_line_flag = False
 
+            #sequence for moving arount the wall
             while self.WALL:
+                #set initial positions
                 pos = self.posAbs
-                phase = self.WALL_PHASES.pop(0)
-                cond = True
                 angle = abs(self.IMU.euler()[0])
                 self.encR.update()
                 posR = self.encR.get_position()
-                print(phase)
+
+                #get next phase in sequence
+                phase = self.WALL_PHASES.pop(0)
+
+                #set flags to false
                 self.read_line_flag = False
                 self.sense_line_flag = False
+
+                cond = True
                 while cond:
                     self.move_flag = True
                     if phase == "back":
@@ -150,14 +155,12 @@ class TaskManager:
                         self.VELOCITY_RAD_R = -1 * self.SPEED
                         self.encR.update()
                         current_angle = self.encR.get_position()
-                        print(f"{current_angle - posR}")
                         cond =  (posR - current_angle < 375)
                     elif phase == "turn90":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         self.encR.update()
                         current_angle = self.encR.get_position()
-                        print(f"{current_angle - posR}")
                         cond =  (current_angle - posR < self.angle)
                     elif phase == "orient":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
@@ -167,24 +170,29 @@ class TaskManager:
 
                     yield
 
+                #if there are no more phases the sequence is done
                 if len(self.WALL_PHASES) == 0:
-                    print("done with wall")
                     self.WALL = False
                     self.STOP = False
                     self.black_flag = False
+                    #speed up for the home stretch
                     self.SPEED = 1.5 * self.SPEED
                 yield
 
+            #sequence for returning to the start
             while self.END:
+                #set initial position
+                angle = abs(self.IMU.euler()[0])
+                pos = self.posAbs
+
+                #reset count for tracking blank spaces
                 self.white_goal = 3#9
                 self.end_count = 0
-                angle = abs(self.IMU.euler()[0])
-                print(f"start angle: {angle}")
-                pos = self.posAbs
+                
+                #get phase
                 phase = self.END_PHASES.pop(0)
+
                 cond = True
-                print(phase)
-                self.read_line_flag = False
                 while cond and phase != "stop":
                     self.move_flag = True
                     if phase == "forward":
@@ -199,14 +207,13 @@ class TaskManager:
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         current_angle = abs(self.IMU.euler()[0] )
-                        print(f"current angle: {current_angle} ({abs(current_angle - angle)})")
                         cond = not ((current_angle <= 3 and current_angle >= 0) or (current_angle <= 360 and current_angle >= 357) )#abs(abs(current_angle - angle)) < 165
                     elif phase == "line sense":
-                        #self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = self.SPEED, self.SPEED
                         self.read_line_flag = True
                         cond = not (self.end_count >= self.white_goal)
-
                     yield
+
+                #stop end sequence if no more phases
                 if len(self.END_PHASES) == 0 or phase == "stop":
                     print("done with wall")
                     self.WALL = False
