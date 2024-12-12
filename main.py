@@ -9,11 +9,6 @@ import machine
 from classes import BNO055_2, Encoder, Motor
 import task_share
 import cotask
-"""@package docstring
-Documentation for this module.
- 
-More details.
-"""
 
 """
 CLASSES
