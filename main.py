@@ -21,23 +21,17 @@ class TaskManager:
         self.DESTINATION = 1000
         self.forward1 = 3000
         self.forward2 = 2500
-        self.forward3 = 1500
         self.back_dist = 750
-        self.return_dist = 5600
+        self.return_dist = 2500
         self.adjust_forward_dist = 2000
-        self.angle = 575
-        self.yaw = 2*math.pi - 0.1
-        self.white_goal = 22
-        # How are we going to do velocity? A vector?
-        #self.VELOCITY = 50  # rn this is set to duty cycle, but we wil change it to some sort of velocuty
+        self.angle = 500
+        self.white_goal =9# 22
+    
         self.scale = 1.2
         self.SPEED = 12
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
-        self.STOP_BUTTON = False
         self.LINE_SENSED = False
         
-        
-
         #pins for line sensor
         self.SEN_0 = Pin.cpu.B14
         self.SEN_2 = Pin.cpu.B15
@@ -46,7 +40,6 @@ class TaskManager:
         self.SEN_5 = Pin.cpu.B10
         self.SEN_7 = Pin.cpu.B13
         self.white = 0
-
 
         # motors and encoders
         self.motorL = motorL
@@ -59,10 +52,6 @@ class TaskManager:
         self.posL = 0
         self.posAbs = 0  # How do we store this?
 
-        # share and queue (not needed rn, but maybe will need once things get more complicated)
-        self.share_dest = task_share.Share('i', thread_protect=True, name="Share 0")
-        self.queue = task_share.Queue('l', 16, thread_protect=True, overwrite=False, name="Queue 0")
-
         # flags
         self.adjust_speed_flag = False  # task_speed_up
         self.print_motor_data_flag = True
@@ -74,12 +63,10 @@ class TaskManager:
         self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
         self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
 
-
         self.STOP = False
         self.WALL = False
         self.PHASES = ["back", "turn45", "forward1", "turn90", "adjust forward", "forward2", "orient"]
-        self.END_PHASES = ["turn180", "line sense", "forward", "stop", "stop", "stop", "stop"]
-        self.phase = "back"
+        self.END_PHASES = ["turn180", "line sense","forward", "stop", "stop", "stop", "stop"]
         self.END = False
 
         self.BLACK = False
@@ -104,86 +91,7 @@ class TaskManager:
         cotask.task_list.append(adjust_speed)
         cotask.task_list.append(update_position)
         cotask.task_list.append(bump)
-        #cotask.task_list.append(print_motor_data)
-
-    def read(self, sensors):
-        sensorValues = [0,0,0,0,0,0]
-        maxValue = 4095
-
-        for i, sensor in enumerate(sensors):
-            sensorValues[i] = maxValue
-            # make sensor line an output (drives low briefly, but doesn't matter)
-            sensor.init(sensor.OUT)
-            # drive sensor line high
-            sensor.value(1)
-
-
-        time.sleep(.00001) # charge lines for 10 us
-
-        # record start time before the first sensor is switched to input
-        # (similarly, time is checked before the first sensor is read in the
-        # loop below)
-        startTime = time.ticks_us()
-        t = 0
-
-        for sensor in sensors:
-            # make sensor line an input (should also ensure pull-up is disabled)
-            sensor.init(sensor.IN)
-
-
-        while (t < maxValue):
-            t = ticks_diff(ticks_us(), startTime)
-            for i in range(0, len(sensors)):
-                if (sensors[i].value() == 0) and (t < sensorValues[i]):
-                    # record the first time the line reads low
-                    sensorValues[i] = t
-
-        
-
-        Kg = .83
-        scaled = [0, 0, 0, 0, 0, 0]
-        scaled[0] = -15*self.scale if sensorValues[5] > 900 else 0 #PIN0
-        scaled[1] = -5*self.scale if sensorValues[4] > 900 else 0 #PIN2
-        scaled[2] = -1*self.scale if sensorValues[3] > 700 else 0 #PIN3
-        scaled[3] = 1*self.scale if sensorValues[2] > 700 else 0 #PIN4
-        scaled[4] = 5*self.scale if sensorValues[1] > 900 else 0 #PIN5
-        scaled[5] = 15*self.scale if sensorValues[0] > 900 else 0 #PIN7
-
-        if not self.sense_line_flag:
-            if scaled.count(0) == 6:
-                if self.BLACK:
-                    self.end_count += 1
-                    print(f"line count: {self.end_count}")
-                self.BLACK = False
-            else:
-                self.BLACK = True
-
-            if self.end_count == self.white_goal:#22:
-                self.STOP = True
-                print("end triggered")
-                self.END = True
-
-
-            wl = Kg*sum(scaled)
-            if wl < 0:
-                self.VELOCITY_RAD_L = self.SPEED + wl
-                self.VELOCITY_RAD_R = self.SPEED - wl
-            elif wl > 0:
-                self.VELOCITY_RAD_L = self.SPEED + wl
-                self.VELOCITY_RAD_R = self.SPEED - wl
-            else:
-                self.VELOCITY_RAD_L = self.SPEED
-                self.VELOCITY_RAD_R = self.SPEED
-                # if True:
-                #     self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = (-1 * self.VELOCITY_RAD_L), (-1 * self.VELOCITY_RAD_R)
-
-            
-
-            return sensorValues
-        else:
-            if scaled.count(0) != 6:
-                print("line sensed")
-                self.LINE_SENSED = True
+       
     def run_tasks(self):
         while True:
             try:
@@ -194,10 +102,10 @@ class TaskManager:
                 break
 
     # TASK
-
-
     def task_controller(self):
+        
         while True:
+            #print(f"{self.IMU.euler()[0]}")
             # if romi is not at his destination then he should move
             if not self.STOP:
                 self.move_flag = True
@@ -224,7 +132,7 @@ class TaskManager:
                         cond = self.posAbs > (pos - self.back_dist)
                     elif phase == "forward1":
                         self.VELOCITY_RAD_L = 2 * self.SPEED
-                        self.VELOCITY_RAD_R = 2.5 * self.SPEED
+                        self.VELOCITY_RAD_R = 2 * self.SPEED
                         cond = self.posAbs < (pos + self.forward1)
                     elif phase == "adjust forward":
                         self.VELOCITY_RAD_L = 2 * self.SPEED
@@ -267,7 +175,7 @@ class TaskManager:
                 yield
 
             while self.END:
-                self.white_goal = 3
+                self.white_goal = 3#9
                 self.end_count = 0
                 angle = abs(self.IMU.euler()[0])
                 print(f"start angle: {angle}")
@@ -291,7 +199,7 @@ class TaskManager:
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         current_angle = abs(self.IMU.euler()[0] )
                         print(f"current angle: {current_angle} ({abs(current_angle - angle)})")
-                        cond = abs(abs(current_angle - angle)) < 165
+                        cond = not ((current_angle <= 3 and current_angle >= 0) or (current_angle <= 360 and current_angle >= 357) )#abs(abs(current_angle - angle)) < 165
                     elif phase == "line sense":
                         #self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = self.SPEED, self.SPEED
                         self.read_line_flag = True
@@ -305,22 +213,9 @@ class TaskManager:
                     self.BLACK = False
                     self.END = False
                 yield
-            # if self.END:
-            #     self.move_flag = True
-            #     self.read_line_flag = True
 
-
-                # pos = self.posAbs
-                # while self.posAbs > pos - self.return_dist:
-                #     self.move_flag = True
-                #     self.VELOCITY_RAD_L = -1 * self.SPEED
-                #     self.VELOCITY_RAD_R = -1 * self.SPEED
-                #     yield
-                # self.move_flag = False
-                # self.END = False
 
             yield
-
 
     def task_bump(self):
         bmp = True
@@ -399,6 +294,76 @@ class TaskManager:
 
     # FUNC
     # TODO functions
+    def read(self, sensors):
+        sensorValues = [0,0,0,0,0,0]
+        maxValue = 4095
+
+        for i, sensor in enumerate(sensors):
+            sensorValues[i] = maxValue
+            # make sensor line an output (drives low briefly, but doesn't matter)
+            sensor.init(sensor.OUT)
+            # drive sensor line high
+            sensor.value(1)
+
+        time.sleep(.00001) # charge lines for 10 us
+
+        # record start time before the first sensor is switched to input
+        # (similarly, time is checked before the first sensor is read in the
+        # loop below)
+        startTime = time.ticks_us()
+        t = 0
+
+        for sensor in sensors:
+            # make sensor line an input (should also ensure pull-up is disabled)
+            sensor.init(sensor.IN)
+
+        while (t < maxValue):
+            t = ticks_diff(ticks_us(), startTime)
+            for i in range(0, len(sensors)):
+                if (sensors[i].value() == 0) and (t < sensorValues[i]):
+                    # record the first time the line reads low
+                    sensorValues[i] = t
+
+        Kg = .83
+        scaled = [0, 0, 0, 0, 0, 0]
+        scaled[0] = -15*self.scale if sensorValues[5] > 900 else 0 #PIN0
+        scaled[1] = -5*self.scale if sensorValues[4] > 900 else 0 #PIN2
+        scaled[2] = -1*self.scale if sensorValues[3] > 700 else 0 #PIN3
+        scaled[3] = 1*self.scale if sensorValues[2] > 700 else 0 #PIN4
+        scaled[4] = 5*self.scale if sensorValues[1] > 900 else 0 #PIN5
+        scaled[5] = 15*self.scale if sensorValues[0] > 900 else 0 #PIN7
+
+        if not self.sense_line_flag:
+            if scaled.count(0) == 6:
+                if self.BLACK:
+                    self.end_count += 1
+                    print(f"line count: {self.end_count}")
+                self.BLACK = False
+            else:
+                self.BLACK = True
+
+            if self.end_count == self.white_goal:#22:
+                self.STOP = True
+                print("end triggered")
+                self.END = True
+
+            wl = Kg*sum(scaled)
+            if wl < 0:
+                self.VELOCITY_RAD_L = self.SPEED + wl
+                self.VELOCITY_RAD_R = self.SPEED - wl
+            elif wl > 0:
+                self.VELOCITY_RAD_L = self.SPEED + wl
+                self.VELOCITY_RAD_R = self.SPEED - wl
+            else:
+                self.VELOCITY_RAD_L = self.SPEED
+                self.VELOCITY_RAD_R = self.SPEED
+
+            return sensorValues
+        else:
+            if scaled.count(0) != 6:
+                print("line sensed")
+                self.LINE_SENSED = True
+
     def go_back(self, e_ticks):
         print("going back")
         self.move_flag = False
@@ -417,8 +382,6 @@ class TaskManager:
         return
 
         self.move_flag = False
-
-
 
     def get_new_duty(self, vleft, vright):
         # function to calculate the new duty cycles of the motors
@@ -517,5 +480,4 @@ if __name__ == '__main__':
     
     while button.value() == 1:
         continue
-    tm.STOP_BUTTON = button
     tm.run_tasks()
