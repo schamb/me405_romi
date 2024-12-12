@@ -3,7 +3,8 @@ from pyb import Timer
 from time import ticks_diff
 import math
 from bno055 import *
-# Encoder class to read and update the encoder ticks
+
+## A class for the Romi encoders.
 class Encoder:
     # Initialize Encoders
     def __init__(self, tim, pin_A, pin_B, ch1, ch2):
@@ -18,7 +19,7 @@ class Encoder:
 
         self.update()
 
-    # Update Encoder Values
+    ## Updates encoder values.
     def update(self):
         self.old_val = self.current_val  # Reset old value
         self.old_time = self.current_time
@@ -35,28 +36,29 @@ class Encoder:
         # Keep track of linear position of each encoder, basically how far each encoder has gone
         self.position += self.delta
 
-    # Geting the updated positon
+    ## Gets position of encoder.
     def get_position(self):
         return self.position
 
-    # Get updated delta
+    ## Gets encoder delta. 
     def get_delta(self):
         return self.delta
 
-    # Define Zero Location for Linear Posiition
+    ## Defines Zero Location for Linear Posiition
     def zero(self):
         self.current_val = 0
         self.old_val = 0
         self.delta = 0
         self.position = 0
 
+    ## Gets velocity of encoder. 
     def get_velocity(self):
         self.velocity = (self.delta * math.pi) / (self.deltat * 720 / 1000000)  # retunrs rad/s
         return self.velocity
 
-# Motor driver class
+## A class for the Romi motors.
 class Motor:
-    # Intiilization
+    ## The constructor.
     def __init__(self, tim, phase, enable, sleep):
         self.PH = phase
         self.tim = tim
@@ -66,8 +68,9 @@ class Motor:
         self.sleep.high()
         self.duty = 0
 
-    # Sets speed of each motor/wheel
-    def set_duty(self, pwm):
+    ## Sets duty cycle for motor.
+    # @param pwm The duty cycle the motor will be set to
+    def set_duty(self, pwm: int):
         self.duty = pwm
         if pwm > 0:
             self.PH.low()
@@ -78,22 +81,25 @@ class Motor:
         else:
             self.EN.pulse_width_percent(0)
 
-    # Enable the motor
+    ## Enables motor.
     def enable(self):
         self.sleep.high()
 
-    # Disable the Motor
+    ## Disables motor.
     def disable(self):
         self.sleep.low()
 
-# IMU class
+## A class for the IMU.
+#
+# This class inherits the BN055 class from this github repository: https://github.com/micropython-IMU/micropython-bno055
 class BNO055_2(BNO055):
+    ## The constructor.
     def __init__(self, i2c, address=0x28, crystal=True, transpose=(0, 1, 2), sign=(0, 0, 0)):
         super().__init__(i2c, address, crystal, transpose, sign)
         self.curr = time.time_ns()
         self.angle_prev = self.euler()[0]
         self.prev = self.curr
-
+    ## Gets heading velocity.
     def get_heading_velocity(self):
         self.prev = self.curr
         self.curr = time.time_ns()
@@ -105,7 +111,7 @@ class BNO055_2(BNO055):
 
         angle_velocity = angle_diff / time_interval
         return angle_velocity
-
+    ## Gets yaw velocity. 
     def get_yaw_velocity(self):
         return -1 * self.get_heading_velocity()
 
