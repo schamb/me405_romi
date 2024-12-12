@@ -17,6 +17,7 @@ CLASSES
 ## TaskManager class for Romi.
 #
 # This class schedules and manages all tasks for the Romi.
+# For more details about tasks and control flow, visit [Task Breakdown](md_task__breakdown.html)
 class TaskManager:
     ## Constructor
     def __init__(self, motorL, motorR, encL, encR, IMU):
