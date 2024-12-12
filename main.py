@@ -229,7 +229,7 @@ class TaskManager:
         bmp = True
         while True:
             while bmp:
-                #print(self.BMP.value())
+                #check to see if the bump sensor has been triggered
                 if self.BMP.value() == 0 or self.BMP2.value() == 0:
                     self.STOP = True
                     self.WALL = True
@@ -250,6 +250,7 @@ class TaskManager:
                 self.update_position_flag = True
                 yield
 
+            #if not moving stop the motors
             self.motorL.set_duty(0)
             self.motorR.set_duty(0)
             self.adjust_speed_flag = False
