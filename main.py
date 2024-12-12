@@ -58,7 +58,6 @@ class TaskManager:
 
         # flags
         self.adjust_speed_flag = False  # task_speed_up
-        self.print_motor_data_flag = True
         self.move_flag = False
         self.update_position_flag = False
         self.read_line_flag = False
@@ -84,7 +83,6 @@ class TaskManager:
         move = cotask.Task(self.task_move, priority=6, period=25, profile=True, trace=False)
         adjust_speed = cotask.Task(self.task_adjust_speed, priority=7, period=20, profile=True, trace=False)
         update_position = cotask.Task(self.task_update_position, priority=0, period=10, profile=True, trace=False)
-        print_motor_data = cotask.Task(self.task_print_motor_data, priority=1, period=150, profile=True, trace=False)
         read_line = cotask.Task(self.task_read_line, priority=8, period = 30, profile=True, trace=False)
         bump = cotask.Task(self.task_bump, priority=8, period = 30, profile=True, trace=False)
 
@@ -273,17 +271,10 @@ class TaskManager:
                 self.posL = self.encL.get_position()
                 self.posAbs = self.get_absolute_position()
 
-                self.print_motor_data_flag = True
                 yield
 
             yield
 
-    def task_print_motor_data(self):
-        while True:
-            while self.print_motor_data_flag:
-                print(f"{self.encL.get_velocity()} {self.encR.get_velocity()} {self.posAbs}")
-                self.print_motor_data_flag = False
-            yield
 
     def task_read_line(self):
         while True:
