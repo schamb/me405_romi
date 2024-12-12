@@ -438,9 +438,9 @@ if __name__ == '__main__':
     i2c = machine.I2C(1)
     IMU = BNO055_2(i2c)
 
-
     tm = TaskManager(motorL, motorR, encL, encR, IMU)
     
+    #press the button to start romi
     while button.value() == 1:
         continue
     tm.run_tasks()
