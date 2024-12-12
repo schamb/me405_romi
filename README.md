@@ -7,7 +7,7 @@ github: https://github.com/schamb/me405_romi/tree/main
 - [References](md_refs.html)
 
 
-## Classes in the Project
+## Classes
 - [TaskManager](classmain_1_1_task_manager.html)
 - [Encoder](classclasses_1_1_encoder.html)
 - [Motor](classclasses_1_1_motor.html)
