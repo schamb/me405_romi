@@ -36,8 +36,8 @@ class TaskManager:
         self.white_goal = 22
     
         #SPEED CONTROL
-        self.scale = 1.2
-        self.SPEED = 12
+        self.scale = 1
+        self.SPEED = 10
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
         
         #pins for line sensor and bumb sensor
@@ -207,7 +207,7 @@ class TaskManager:
                 pos = self.posAbs
 
                 #reset count for tracking blank spaces
-                self.white_goal = 3#9
+                self.white_goal = 9
                 self.end_count = 0
                 
                 #get phase

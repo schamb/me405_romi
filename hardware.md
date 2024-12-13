@@ -18,7 +18,11 @@ The following table provides an overview of the hardware used on this Romi Chass
 
  
 
-There were no custom components that were 3D printed or machined used on this Romi chassis. The means of attaching the line sensor and bumper switches comes with purchasing the components from the provider. 
+There were no custom components that were 3D printed or machined used on this Romi chassis. The means of attaching the line sensor and bumper switches comes with purchasing the components from the provider.
+
+![romi front](romi_pics/front_s.png)
+![romi back](romi_pics/back_s.png)
+![romi side](romi_pics/side_s.png)
 
 ---
 
@@ -82,6 +86,8 @@ There were no custom components that were 3D printed or machined used on this Ro
  
 
     We tested our line sensors on the challenge path and determined the output values that correspond to white and black readings. We then modified our line sensor code to output a Boolean response. We implemented it by setting an initialization value and then performing integer division on the output time value. This allows us to easily update the initialization value if we change course locations, line colors, or time of day. Once we have a Boolean for each line sensor, we read the array of sensors where the index of the array corresponds to the location on the chassis. We then multiply the Booleans by their corresponding signed scales and add all the signed scales values. Once we have this value, the magnitude determines the amount of change each wheel undergoes from a prescribed base velocity. The sign on the value then determines which wheel increases speed and which one decreases speed in a logic loop in the code. 
+
+    ![line sensor](romi_pics/line_s.png)
     
 </details>
 <details>
@@ -123,12 +129,16 @@ There were no custom components that were 3D printed or machined used on this Ro
 
     
 
-    After the above sequence is completed, the Romi returns to its line following capabilities and completes the rest of the course. 
+    After the above sequence is completed, the Romi returns to its line following capabilities and completes the rest of the course.
+
+    ![bump_sensor](romi_pics/bump_s.png) 
 </details>
 <details>
     <summary>IMU</summary>
     Our Romi is equipped with a BNO055 Inertial Measurement Unit (IMU). The IMU is capable of recording data such as cardinal directions and local accelerations, but for the scope of this project, we will only be using the heading measurements that are provided by the IMU. We used a class of commands that we found online and was created by BLANK, please see the references page for the link to the repository. This class returns to us Euler Angles, one of which is heading. Throughout the challenge course, we use differential, or local, positioning to determine how much we need to turn. Because of this, we can use the heading that is provided to us from this class to determine our change in angle, since heading and angle differ by only a sign change. The IMU is used in the bump sensor sequence and the finish sequence. 
 
     The IMU is located on the back of the Romi chassis. It is placed in a breadboard and is stuck to the chassis via an adhesive. 
+
+    ![IMU](romi_pics/imu_s.png)
     
 </details>
