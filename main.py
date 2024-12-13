@@ -14,32 +14,41 @@ import cotask
 CLASSES
 """
 
+## TaskManager class for Romi.
+#
+# This class schedules and manages all tasks for the Romi.
+# For more details about tasks and control flow, visit [Task Breakdown](md_task__breakdown.html)
 class TaskManager:
+    ## Constructor
     def __init__(self, motorL, motorR, encL, encR, IMU):
         self.IMU = IMU
         # constants
-        self.DESTINATION = 1000
+
+        #WALL SEQUENCE
         self.forward1 = 3000
         self.forward2 = 2500
         self.back_dist = 750
+        self.angle = 500
+
+        #END SEQUENCE
         self.return_dist = 2500
         self.adjust_forward_dist = 2000
-        self.angle = 500
-        self.white_goal =9# 22
+        self.white_goal = 22
     
-        self.scale = 1.2
-        self.SPEED = 12
+        #SPEED CONTROL
+        self.scale = 1
+        self.SPEED = 10
         self.VELOCITY_RAD_L , self.VELOCITY_RAD_R = self.SPEED, self.SPEED
-        self.LINE_SENSED = False
         
-        #pins for line sensor
+        #pins for line sensor and bumb sensor
         self.SEN_0 = Pin.cpu.B14
         self.SEN_2 = Pin.cpu.B15
         self.SEN_3 = Pin.cpu.B11
         self.SEN_4 = Pin.cpu.B12
         self.SEN_5 = Pin.cpu.B10
         self.SEN_7 = Pin.cpu.B13
-        self.white = 0
+        self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
+        self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
 
         # motors and encoders
         self.motorL = motorL
@@ -50,38 +59,43 @@ class TaskManager:
         # motor positions
         self.posR = 0
         self.posL = 0
-        self.posAbs = 0  # How do we store this?
+        self.posAbs = 0 
 
         # flags
         self.adjust_speed_flag = False  # task_speed_up
-        self.print_motor_data_flag = True
         self.move_flag = False
         self.update_position_flag = False
         self.read_line_flag = False
         self.sense_line_flag = False
+        self.line_sensed_flag = False
+        self.black_flag = False
 
-        self.BMP = Pin(Pin.cpu.C10, Pin.IN, Pin.PULL_UP)
-        self.BMP2 = Pin(Pin.cpu.A15, Pin.IN, Pin.PULL_UP)
-
+        #Phases
         self.STOP = False
         self.WALL = False
-        self.PHASES = ["back", "turn45", "forward1", "turn90", "adjust forward", "forward2", "orient"]
-        self.END_PHASES = ["turn180", "line sense","forward", "stop", "stop", "stop", "stop"]
         self.END = False
+        self.WALL_PHASES = ["back", "turn45", "forward1", "turn90", "adjust forward", "forward2", "orient"]
+        self.END_PHASES = ["turn180", "line sense","forward", "stop", "stop", "stop", "stop"]
 
-        self.BLACK = False
-        self.WHITE = False
+        #condition to trigger end phase
         self.end_count = 0
 
         # create tasks
         self.create_tasks()
 
+    ## Creates tasks and adds them to the task list. 
+    #
+    # @arg @c controller
+    # @arg @c move
+    # @arg @c adjust_speed
+    # @arg @c update_position
+    # @arg @c read_line
+    # @arg @c bump
     def create_tasks(self):
         controller = cotask.Task(self.task_controller, priority=5, period=40, profile=True, trace=False)
         move = cotask.Task(self.task_move, priority=6, period=25, profile=True, trace=False)
         adjust_speed = cotask.Task(self.task_adjust_speed, priority=7, period=20, profile=True, trace=False)
         update_position = cotask.Task(self.task_update_position, priority=0, period=10, profile=True, trace=False)
-        print_motor_data = cotask.Task(self.task_print_motor_data, priority=1, period=150, profile=True, trace=False)
         read_line = cotask.Task(self.task_read_line, priority=8, period = 30, profile=True, trace=False)
         bump = cotask.Task(self.task_bump, priority=8, period = 30, profile=True, trace=False)
 
@@ -92,6 +106,7 @@ class TaskManager:
         cotask.task_list.append(update_position)
         cotask.task_list.append(bump)
        
+    ## Runs tasks until ctrl+c is pressed.
     def run_tasks(self):
         while True:
             try:
@@ -102,11 +117,17 @@ class TaskManager:
                 break
 
     # TASK
+    ## Main controller thread for the Romi.
+    #
+    # Controller is in charge of general phases. 
+    # Romi has four phases: 
+    # @arg @c normal line following
+    # @arg @c  wall sequence
+    # @arg @c end sequence
+    # @arg @c stop
     def task_controller(self):
-        
         while True:
-            #print(f"{self.IMU.euler()[0]}")
-            # if romi is not at his destination then he should move
+            # general stop flag, romi wil stop if no other flag is set
             if not self.STOP:
                 self.move_flag = True
                 self.read_line_flag = True
@@ -114,16 +135,22 @@ class TaskManager:
                 self.move_flag = False
                 self.read_line_flag = False
 
+            #sequence for moving arount the wall
             while self.WALL:
+                #set initial positions
                 pos = self.posAbs
-                phase = self.PHASES.pop(0)
-                cond = True
                 angle = abs(self.IMU.euler()[0])
                 self.encR.update()
                 posR = self.encR.get_position()
-                print(phase)
+
+                #get next phase in sequence
+                phase = self.WALL_PHASES.pop(0)
+
+                #set flags to false
                 self.read_line_flag = False
                 self.sense_line_flag = False
+
+                cond = True
                 while cond:
                     self.move_flag = True
                     if phase == "back":
@@ -143,20 +170,18 @@ class TaskManager:
                         self.VELOCITY_RAD_R = 1.5 * self.SPEED
                         self.read_line_flag = True
                         self.sense_line_flag = True
-                        cond = not self.LINE_SENSED
+                        cond = not self.line_sensed_flag
                     elif phase == "turn45":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
                         self.VELOCITY_RAD_R = -1 * self.SPEED
                         self.encR.update()
                         current_angle = self.encR.get_position()
-                        print(f"{current_angle - posR}")
                         cond =  (posR - current_angle < 375)
                     elif phase == "turn90":
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         self.encR.update()
                         current_angle = self.encR.get_position()
-                        print(f"{current_angle - posR}")
                         cond =  (current_angle - posR < self.angle)
                     elif phase == "orient":
                         self.VELOCITY_RAD_L = 1 * self.SPEED
@@ -166,24 +191,29 @@ class TaskManager:
 
                     yield
 
-                if len(self.PHASES) == 0:
-                    print("done with wall")
+                #if there are no more phases the sequence is done
+                if len(self.WALL_PHASES) == 0:
                     self.WALL = False
                     self.STOP = False
-                    self.BLACK = False
+                    self.black_flag = False
+                    #speed up for the home stretch
                     self.SPEED = 1.5 * self.SPEED
                 yield
 
+            #sequence for returning to the start
             while self.END:
-                self.white_goal = 3#9
-                self.end_count = 0
+                #set initial position
                 angle = abs(self.IMU.euler()[0])
-                print(f"start angle: {angle}")
                 pos = self.posAbs
+
+                #reset count for tracking blank spaces
+                self.white_goal = 9
+                self.end_count = 0
+                
+                #get phase
                 phase = self.END_PHASES.pop(0)
+
                 cond = True
-                print(phase)
-                self.read_line_flag = False
                 while cond and phase != "stop":
                     self.move_flag = True
                     if phase == "forward":
@@ -198,30 +228,30 @@ class TaskManager:
                         self.VELOCITY_RAD_L = -1 * self.SPEED
                         self.VELOCITY_RAD_R = 1 * self.SPEED
                         current_angle = abs(self.IMU.euler()[0] )
-                        print(f"current angle: {current_angle} ({abs(current_angle - angle)})")
                         cond = not ((current_angle <= 3 and current_angle >= 0) or (current_angle <= 360 and current_angle >= 357) )#abs(abs(current_angle - angle)) < 165
                     elif phase == "line sense":
-                        #self.VELOCITY_RAD_L, self.VELOCITY_RAD_R = self.SPEED, self.SPEED
                         self.read_line_flag = True
                         cond = not (self.end_count >= self.white_goal)
-
                     yield
+
+                #stop end sequence if no more phases
                 if len(self.END_PHASES) == 0 or phase == "stop":
                     print("done with wall")
                     self.WALL = False
                     self.STOP = True
-                    self.BLACK = False
+                    self.black_flag = False
                     self.END = False
                 yield
 
 
             yield
 
+    ## Task for polling the bump sensor.
     def task_bump(self):
         bmp = True
         while True:
             while bmp:
-                #print(self.BMP.value())
+                #check to see if the bump sensor has been triggered
                 if self.BMP.value() == 0 or self.BMP2.value() == 0:
                     self.STOP = True
                     self.WALL = True
@@ -229,6 +259,7 @@ class TaskManager:
                 yield
             yield
 
+    ## Task in charge of Romi movement.
     def task_move(self):
         while True:
             while self.move_flag:
@@ -242,12 +273,14 @@ class TaskManager:
                 self.update_position_flag = True
                 yield
 
+            #if not moving stop the motors
             self.motorL.set_duty(0)
             self.motorR.set_duty(0)
             self.adjust_speed_flag = False
             self.update_position_flag = False
             yield
 
+    ## Task in charge of adjusting individual wheel speeds. 
     def task_adjust_speed(self):
         # takes in desired velocity for both motors
         while True:
@@ -255,45 +288,38 @@ class TaskManager:
                 dutyR, dutyL = self.get_new_duty(self.VELOCITY_RAD_L, self.VELOCITY_RAD_R)  # this is what we would calculate with the IMU
                 self.motorR.set_duty(dutyR)
                 self.motorL.set_duty(dutyL)
-
                 yield
-
             yield
 
+    ## Task for updating the position of the Romi.
     def task_update_position(self):
         while True:
+            # update romi encoders to track position
             while self.update_position_flag:
                 self.encL.update()
                 self.encR.update()
-
                 self.posR = self.encR.get_position()
                 self.posL = self.encL.get_position()
                 self.posAbs = self.get_absolute_position()
-
-                self.print_motor_data_flag = True
                 yield
-
             yield
 
-    def task_print_motor_data(self):
-        while True:
-            while self.print_motor_data_flag:
-                print(f"{self.encL.get_velocity()} {self.encR.get_velocity()} {self.posAbs}")
-                self.print_motor_data_flag = False
-            yield
-
+    ## Task for reading the line sensor.
     def task_read_line(self):
         while True:
+            #task for line sensing
             while self.read_line_flag:
                 sensors = [self.SEN_0, self.SEN_2, self.SEN_3, self.SEN_4, self.SEN_5, self.SEN_7]
-
                 vals = self.read(sensors)
                 yield
 
             yield
 
-    # FUNC
-    # TODO functions
+    # FUNCTIONS
+
+    ## Function for reading the line sensor.
+    #
+    # @param sensors Array of sensors on the line sensor.
     def read(self, sensors):
         sensorValues = [0,0,0,0,0,0]
         maxValue = 4095
@@ -335,12 +361,12 @@ class TaskManager:
 
         if not self.sense_line_flag:
             if scaled.count(0) == 6:
-                if self.BLACK:
+                if self.black_flag:
                     self.end_count += 1
                     print(f"line count: {self.end_count}")
-                self.BLACK = False
+                self.black_flag = False
             else:
-                self.BLACK = True
+                self.black_flag = True
 
             if self.end_count == self.white_goal:#22:
                 self.STOP = True
@@ -362,69 +388,44 @@ class TaskManager:
         else:
             if scaled.count(0) != 6:
                 print("line sensed")
-                self.LINE_SENSED = True
-
-    def go_back(self, e_ticks):
-        print("going back")
-        self.move_flag = False
-
-        start = self.posAbs
-        self.VELOCITY_RAD_L = -.5 * self.SPEED
-        self.VELOCITY_RAD_R = -.5 * self.SPEED
-        self.move_flag = True
-
-        return
-        while self.posAbs < start + e_ticks:
-            self.posR = self.encR.get_position()
-            self.posL = self.encL.get_position()
-            self.posAbs = self.get_absolute_position()
-
-        return
-
-        self.move_flag = False
-
-    def get_new_duty(self, vleft, vright):
+                self.line_sensed_flag = True
+        
+    ## Funciton for calculating a new duty cycle for each motor base off the speed they are already going.
+    #
+    # @param vleft Desired left motor velocity
+    # @param vright Desired right motor velocity
+    def get_new_duty(self, vleft: int, vright: int):
         # function to calculate the new duty cycles of the motors
-
-        # Right now returs the preset duty cycle
-        # Should calculate and return the updated duty cycle for each motor
-        # to be set to to reach specified velocity
         velocityLreal = self.encL.get_velocity()
         velocityRreal = self.encR.get_velocity()
 
         L = 0
         R = 0
-
         Kpr = 3.8 #%s/rad
-        Kir = 0.6 #%/rad
-        Kdr = 0.04736 #%s2/rad
-
         Kpl = 3.06  # %s/rad
-        Kil = 0.6 # %/rad
-        Kdl = 0.0722  # %s2/rad
 
         #Feedback control for L Motor
         self.encL.update()
         ERRl = vleft - velocityLreal
         Fpl = Kpl*ERRl #%
-        Fil = Kil*ERRl*(self.encL.deltat/1000000) #%
-        Fdl = Kdl*ERRl/(self.encL.deltat/1000000) #%
-        L = Fpl #+ Fil + Fdl
+        L = Fpl
 
         # Feedback control for R Motor
         self.encR.update()
         ERRr = vright - velocityRreal
         Fpr = Kpr * ERRr  # %
-        Fir = Kir * ERRr * self.encR.deltat/1000000  # %
-        Fdr = Kdr * ERRr / (self.encR.deltat/1000000)  # %
-        R = Fpr #+ Fir + Fdr
+        R = Fpr 
 
         return R, L
 
+    ## Function to get the absolute position of the Romi.
     def get_absolute_position(self):
         return (self.posL + self.posR) / 2
 
-    def get_wheel_velocity(self, times):
+    ## Function to get the wheel velocity of the romi.
+    #
+    # @param times Seconds
+    def get_wheel_velocity(self, times: int):
         rw = 2.76 #wheel radius, inches
         wromi = 5.55 #Chasi Diameter, inches
         D = 2*24 #circle diameter, inches
@@ -441,7 +442,7 @@ class TaskManager:
 FUNCTIONS
 """
 
-# Set up the motors in accordance with the Motor class
+## Initialize Romi motors using the Motor class
 def initialize_motors():
     # Right Motor
     timer_R = Timer(8, freq=20000)
@@ -458,7 +459,7 @@ def initialize_motors():
     return motor_R, motor_L
 
 
-# Sets up Romi encoders in accorance with the Encoder Class
+## Initialize Romi encoders using the Encoder class
 def initialize_encoders():
     tim_R = Timer(1, period=65535, prescaler=0)
     enc_R = Encoder(tim_R, Pin.cpu.A8, Pin.cpu.A9, 1, 2)  # A8 and A9
@@ -475,9 +476,9 @@ if __name__ == '__main__':
     i2c = machine.I2C(1)
     IMU = BNO055_2(i2c)
 
-
     tm = TaskManager(motorL, motorR, encL, encR, IMU)
     
+    #press the button to start romi
     while button.value() == 1:
         continue
     tm.run_tasks()
